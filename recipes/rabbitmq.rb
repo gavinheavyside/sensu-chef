@@ -17,8 +17,6 @@
 # limitations under the License.
 #
 
-data_bag_name = node["sensu"]["data_bag"]["name"]
-
 group "rabbitmq"
 
 if node["sensu"]["use_ssl"]
@@ -33,9 +31,6 @@ if node["sensu"]["use_ssl"]
     recursive true
   end
 
-  ssl_item = node["sensu"]["data_bag"]["ssl_item"]
-  ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
-
   %w[
     cacert
     cert
@@ -43,7 +38,7 @@ if node["sensu"]["use_ssl"]
   ].each do |item|
     path = File.join(ssl_directory, "#{item}.pem")
     file path do
-      content ssl["server"][item]
+      content citadel["#{node.sensu.citadel.root}/server/#{item}.pem"]
       group "rabbitmq"
       mode 0640
       sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
@@ -59,7 +54,7 @@ if node["sensu"]["use_ssl"]
   ].each do |item|
     path = File.join(ssl_directory, "client", "#{item}.pem")
     file path do
-      content ssl["client"][item]
+      content citadel["#{node.sensu.citadel.root}/client/#{item}.pem"]
       group "rabbitmq"
       mode 0640
       sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
@@ -84,8 +79,7 @@ end
 
 rabbitmq = node["sensu"]["rabbitmq"].to_hash
 
-config_item = node["sensu"]["data_bag"]["config_item"]
-sensu_config = Sensu::Helpers.data_bag_item(config_item, true, data_bag_name)
+sensu_config = JSON.parse(citadel["#{node.sensu.citadel.root}/config.json"])
 
 if sensu_config && sensu_config["rabbitmq"].is_a?(Hash)
   rabbitmq = Chef::Mixin::DeepMerge.merge(rabbitmq, sensu_config["rabbitmq"])
@@ -103,7 +97,7 @@ end
   api
   server
 ].each do |service|
-  service_config = Sensu::Helpers.data_bag_item(service, true, data_bag_name)
+  service_config = JSON.parse(citadel["#{node.sensu.citadel.root}/#{service}_config.json"])
 
   next unless service_config && service_config["rabbitmq"].is_a?(Hash)
 

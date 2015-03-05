@@ -4,13 +4,9 @@ action :create do
     %w[transport rabbitmq redis api]
   )
 
-  data_bag_name = node["sensu"]["data_bag"]["name"]
-  config_item = node["sensu"]["data_bag"]["config_item"]
-
-  config = Sensu::Helpers.data_bag_item(config_item, true, data_bag_name)
-
-  if config
-    definitions = Chef::Mixin::DeepMerge.merge(definitions, config.to_hash)
+  config = JSON.parse(citadel["#{node.sensu.citadel.root}/config.json"])
+  unless config.empty?
+    definitions = Chef::Mixin::DeepMerge.merge(definitions, config)
   end
 
   service_config = {}
@@ -25,10 +21,9 @@ action :create do
       next
     end
 
-    service_data_bag_item = Sensu::Helpers.data_bag_item(service, true, data_bag_name)
-
-    if service_data_bag_item
-      service_config = Chef::Mixin::DeepMerge.merge(service_config, service_data_bag_item.to_hash)
+    service_config_item = JSON.parse(citadel["#{node.sensu.citadel.root}/#{service}_config.json"])
+    unless service_config_item.empty?
+      service_config = Chef::Mixin::DeepMerge.merge(service_config, service_config_item.to_hash)
     end
   end
 

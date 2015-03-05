@@ -1,10 +1,10 @@
-name             "sensu"
+name             "sensu-citadel"
 maintainer       "Sonian, Inc."
 maintainer_email "chefs@sonian.net"
 license          "Apache 2.0"
 description      "Installs/Configures Sensu"
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
-version          "2.11.0"
+version          "2.11.99"
 
 # available @ http://supermarket.chef.io/cookbooks/apt
 depends "apt"
@@ -23,6 +23,8 @@ depends "redisio", ">= 1.7.0"
 
 # available @ https://supermarket.chef.io/cookbooks/chef-vault
 suggests "chef-vault", ">= 1.3.1"
+
+depends "citadel"
 
 %w[
   ubuntu

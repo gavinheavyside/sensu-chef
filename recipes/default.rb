@@ -63,22 +63,17 @@ if node["sensu"]["use_ssl"]
     mode 0750
   end
 
-  data_bag_name = node["sensu"]["data_bag"]["name"]
-  ssl_item = node["sensu"]["data_bag"]["ssl_item"]
-
-  ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
-
-  file node["sensu"]["rabbitmq"]["ssl"]["cert_chain_file"] do
-    content ssl["client"]["cert"]
-    owner node["sensu"]["admin_user"]
-    group node["sensu"]["group"]
+  file node.sensu.rabbitmq.ssl.cert_chain_file do
+    content citadel["#{node.sensu.citadel.root}/client/cert.pem"]
+    owner node.sensu.admin_user
+    group node.sensu.group
     mode 0640
   end
 
-  file node["sensu"]["rabbitmq"]["ssl"]["private_key_file"] do
-    content ssl["client"]["key"]
-    owner node["sensu"]["admin_user"]
-    group node["sensu"]["group"]
+  file node.sensu.rabbitmq.ssl.private_key_file do
+    content citadel["#{node.sensu.citadel.root}/client/key.pem"]
+    owner node.sensu.admin_user
+    group node.sensu.group
     mode 0640
     sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
   end

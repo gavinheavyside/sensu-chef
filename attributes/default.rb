@@ -52,7 +52,10 @@ default["sensu"]["api"]["bind"] = "0.0.0.0"
 default["sensu"]["api"]["port"] = 4567
 
 # data bag
-default["sensu"]["data_bag"]["name"] = "sensu"
-default["sensu"]["data_bag"]["ssl_item"] = "ssl"
-default["sensu"]["data_bag"]["config_item"] = "config"
-default["sensu"]["data_bag"]["enterprise_item"] = "enterprise"
+default.sensu.data_bag.name = "sensu"
+default.sensu.data_bag.ssl_item = "ssl"
+default.sensu.data_bag.config_item = "config"
+default.sensu.data_bag.enterprise_item = "enterprise"
+
+# citadel
+default.sensu.citadel.root = "/config/sensu"
