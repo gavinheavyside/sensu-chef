@@ -33,6 +33,10 @@ if node["sensu"]["use_ssl"]
     recursive true
   end
 
+  unless node["sensu"]["citadel"]["root"]
+    ssl_item = node["sensu"]["data_bag"]["ssl_item"]
+    ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
+  end
 
   %w[
     cacert
@@ -49,9 +53,6 @@ if node["sensu"]["use_ssl"]
         sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
       end
     else
-      ssl_item = node["sensu"]["data_bag"]["ssl_item"]
-      ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
-
       file path do
         content ssl["server"][item]
         group "rabbitmq"
