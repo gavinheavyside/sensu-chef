@@ -19,11 +19,11 @@
 
 group "rabbitmq"
 
-if node.sensu.use_ssl
-  node.override.rabbitmq.ssl = true
-  node.override.rabbitmq.ssl_port = node.sensu.rabbitmq.port
-  node.override.rabbitmq.ssl_verify = "verify_peer"
-  node.override.rabbitmq.ssl_fail_if_no_peer_cert = true
+if node["sensu"]["use_ssl"]
+  node.override["rabbitmq"]["ssl"] = true
+  node.override["rabbitmq"]["ssl_port"] = node["sensu"]["rabbitmq"]["port"]
+  node.override["rabbitmq"]["ssl_verify"] = "verify_peer"
+  node.override["rabbitmq"]["ssl_fail_if_no_peer_cert"] = true
 
   ssl_directory = "/etc/rabbitmq/ssl"
 
@@ -31,18 +31,34 @@ if node.sensu.use_ssl
     recursive true
   end
 
+
   %w[
     cacert
     cert
     key
   ].each do |item|
     path = File.join(ssl_directory, "#{item}.pem")
-    file path do
-      content citadel["#{node.sensu.citadel.root}/server/#{item}.pem"]
-      group "rabbitmq"
-      mode 0640
+
+    if node["sensu"]["citadel"]["root"]
+      file path do
+        content citadel["#{node.sensu.citadel.root}/server/#{item}.pem"]
+        group "rabbitmq"
+        mode 0640
+        sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+      end
+    else
+      ssl_item = node["sensu"]["data_bag"]["ssl_item"]
+      ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
+
+      file path do
+        content ssl["server"][item]
+        group "rabbitmq"
+        mode 0640
+        sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+      end
     end
-    node.override.rabbitmq["ssl_#{item}"] = path
+
+    node.override["rabbitmq"]["ssl_#{item}"] = path
   end
 
   directory File.join(ssl_directory, "client")
@@ -52,32 +68,48 @@ if node.sensu.use_ssl
     key
   ].each do |item|
     path = File.join(ssl_directory, "client", "#{item}.pem")
-    file path do
-      content citadel["#{node.sensu.citadel.root}/client/#{item}.pem"]
-      group "rabbitmq"
-      mode 0640
+
+    if node["sensu"]["citadel"]["root"]
+      file path do
+        content citadel["#{node.sensu.citadel.root}/client/#{item}.pem"]
+        group "rabbitmq"
+        mode 0640
+        sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+      end
+    else
+      file path do
+        content ssl["client"][item]
+        group "rabbitmq"
+        mode 0640
+        sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+      end
     end
   end
 end
 
 # The packaged erlang in 12.04 (and below) is vulnerable to
 # the poodle exploit which stops rabbitmq starting its SSL listener
-if node.platform == "ubuntu" && node.platform_version <= "12.04"
-  node.override.erlang.install_method = "esl"
+if node["platform"] == "ubuntu" && node["platform_version"] <= "12.04"
+  node.override["erlang"]["install_method"] = "esl"
 end
 
 include_recipe "rabbitmq"
 include_recipe "rabbitmq::mgmt_console"
 
-service "restart #{node.rabbitmq.service_name}" do
-  service_name node.rabbitmq.service_name
+service "restart #{node["rabbitmq"]["service_name"]}" do
+  service_name node["rabbitmq"]["service_name"]
   action :nothing
-  subscribes :restart, resources("template[#{node.rabbitmq.config_root}/rabbitmq.config]"), :immediately
+  subscribes :restart, resources("template[#{node['rabbitmq']['config_root']}/rabbitmq.config]"), :immediately
 end
 
-rabbitmq = node.sensu.rabbitmq.to_hash
+rabbitmq = node["sensu"]["rabbitmq"].to_hash
 
+<<<<<<< HEAD
 sensu_config = JSON.parse(citadel["#{node.sensu.citadel.root}/config.json"])
+=======
+config_item = node["sensu"]["data_bag"]["config_item"]
+sensu_config = Sensu::Helpers.data_bag_item(config_item, true, data_bag_name)
+>>>>>>> master
 
 if sensu_config && sensu_config["rabbitmq"].is_a?(Hash)
   rabbitmq = Chef::Mixin::DeepMerge.merge(rabbitmq, sensu_config["rabbitmq"])

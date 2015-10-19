@@ -1,5 +1,5 @@
 def load_current_resource
-  definition_directory = ::File.join(node.sensu.directory, "conf.d", "checks")
+  definition_directory = ::File.join(node["sensu"]["directory"], "conf.d", "checks")
   @definition_path = ::File.join(definition_directory, "#{new_resource.name}.json")
 end
 
@@ -9,8 +9,8 @@ action :create do
   check = Sensu::Helpers.select_attributes(
     new_resource,
     %w[
-      type command timeout subscribers standalone aggregate handle
-      handlers publish low_flap_threshold high_flap_threshold
+      type command timeout subscribers standalone aggregate handle handlers
+      publish subdue low_flap_threshold high_flap_threshold
     ]
   ).merge("interval" => new_resource.interval).merge(new_resource.additional)
 
