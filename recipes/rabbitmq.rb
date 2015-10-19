@@ -17,6 +17,8 @@
 # limitations under the License.
 #
 
+data_bag_name = node["sensu"]["data_bag"]["name"]
+
 group "rabbitmq"
 
 if node["sensu"]["use_ssl"]
@@ -104,12 +106,12 @@ end
 
 rabbitmq = node["sensu"]["rabbitmq"].to_hash
 
-<<<<<<< HEAD
-sensu_config = JSON.parse(citadel["#{node.sensu.citadel.root}/config.json"])
-=======
-config_item = node["sensu"]["data_bag"]["config_item"]
-sensu_config = Sensu::Helpers.data_bag_item(config_item, true, data_bag_name)
->>>>>>> master
+if node["sensu"]["citadel"]["root"]
+  sensu_config = JSON.parse(citadel["#{node.sensu.citadel.root}/config.json"])
+else
+  config_item = node["sensu"]["data_bag"]["config_item"]
+  sensu_config = Sensu::Helpers.data_bag_item(config_item, true, data_bag_name)
+end
 
 if sensu_config && sensu_config["rabbitmq"].is_a?(Hash)
   rabbitmq = Chef::Mixin::DeepMerge.merge(rabbitmq, sensu_config["rabbitmq"])
@@ -127,7 +129,11 @@ end
   api
   server
 ].each do |service|
-  service_config = JSON.parse(citadel["#{node.sensu.citadel.root}/#{service}_config.json"])
+  if node["sensu"]["citadel"]["root"]
+    service_config = JSON.parse(citadel["#{node.sensu.citadel.root}/#{service}_config.json"])
+  else
+    service_config = Sensu::Helpers.data_bag_item(service, true, data_bag_name)
+  end
 
   next unless service_config && service_config["rabbitmq"].is_a?(Hash)
 
