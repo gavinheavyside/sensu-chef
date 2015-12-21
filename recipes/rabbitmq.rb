@@ -33,27 +33,17 @@ if node["sensu"]["use_ssl"]
     recursive true
   end
 
-<<<<<<< e9e2e7ce98261df04c18b82126cbcc5756111a30
-=======
   unless node["sensu"]["citadel"]["root"]
     ssl_item = node["sensu"]["data_bag"]["ssl_item"]
     ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
   end
 
->>>>>>> make data bag config available if not using citadel
   %w[
     cacert
     cert
     key
   ].each do |item|
     path = File.join(ssl_directory, "#{item}.pem")
-<<<<<<< e9e2e7ce98261df04c18b82126cbcc5756111a30
-    file path do
-      content citadel["#{node.sensu.citadel.root}/server/#{item}.pem"]
-      group "rabbitmq"
-      mode 0640
-      sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
-=======
 
     if node["sensu"]["citadel"]["root"]
       file path do
@@ -69,7 +59,6 @@ if node["sensu"]["use_ssl"]
         mode 0640
         sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
       end
->>>>>>> make data bag config available if not using citadel
     end
     node.override["rabbitmq"]["ssl_#{item}"] = path
   end
