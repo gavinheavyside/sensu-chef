@@ -17,35 +17,43 @@
 # limitations under the License.
 #
 
-Chef::Recipe.send(:include, Windows::Helper)
+windows = node["sensu"]["windows"].dup
 
-user "sensu" do
-  password Sensu::Helpers.random_password(20, true, true, true, true)
-  not_if {
-    user = Chef::Util::Windows::NetUser.new("sensu")
-    !!user.get_info rescue false
-  }
+if node['kernel']['machine'] =~ /x86_64/
+  kernel = 'x64'
+else
+  kernel = 'x86'
 end
 
-group "sensu" do
-  members "sensu"
+if node['platform_version'].to_f == 6.1
+  version = '2008r2'
+elsif node['platform_version'].to_f == 6.2
+  version = '2012'
+elsif node['platform_version'].to_f == 6.3
+  version = '2012r2'
+elsif node['platform_version'].to_f == 10.0
+  version = '2016'
+end
+
+user node["sensu"]["user"] do
+  password Sensu::Helpers.random_password(20, true, true, true, true)
+  not_if { Sensu::Helpers.windows_user_exists?(node["sensu"]["user"]) }
+end
+
+group node["sensu"]["group"] do
+  members node["sensu"]["user"]
+  append true
   action :manage
 end
 
-if win_version.windows_server_2012? || win_version.windows_server_2012_r2?
-  windows_feature "NetFx3ServerFeatures" do
-    source node["sensu"]["windows"]["dism_source"]
-  end
+if windows["install_dotnet"]
+  include_recipe "ms_dotnet::ms_dotnet#{windows['dotnet_major_version']}"
 end
 
-windows_feature "NetFx3" do
-  source node["sensu"]["windows"]["dism_source"]
-end
-
-windows_package "Sensu" do
-  source "#{node['sensu']['msi_repo_url']}/sensu-#{node['sensu']['version']}.msi"
-  options node["sensu"]["windows"]["package_options"]
-  version node["sensu"]["version"].gsub("-", ".")
+package "Sensu" do
+  source "#{node['sensu']['msi_repo_url']}/#{version}/sensu-#{node['sensu']['version']}-#{kernel}.msi"
+  options windows["package_options"]
+  version node["sensu"]["version"].tr("-", ".")
   notifies :create, "ruby_block[sensu_service_trigger]", :immediately
 end
 
@@ -57,7 +65,5 @@ end
 
 execute "sensu-client.exe install" do
   cwd 'C:\opt\sensu\bin'
-  not_if {
-    ::Win32::Service.exists?("sensu-client")
-  }
+  not_if { Sensu::Helpers.windows_service_exists?("sensu-client") }
 end

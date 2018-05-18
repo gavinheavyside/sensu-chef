@@ -1,8 +1,6 @@
 ---
 driver:
   name: vagrant
-  customize:
-    memory: 512
 
 provisioner:
   name: chef_zero
@@ -10,17 +8,33 @@ provisioner:
 platforms:
   - name: ubuntu-12.04
   - name: ubuntu-14.04
-  - name: centos-5.10
-  - name: centos-6.5
-  - name: windows-2012-r2
+  - name: ubuntu-16.04
+  - name: centos-5.11
+  - name: centos-6.8
+  - name: centos-7.3
+  - name: windows-2008-r2
+    transport:
+      name: winrm
+      elevated: true
     driver:
       http_proxy: null
       https_proxy: null
-      box: windows_2012_r2
+      box: windows-2008r2
       customize:
         memory: 2048
-    provisioner:
-      name: windows_chef_zero
+    attributes:
+      lsb:
+        codename: windows
+  - name: windows-2012-r2
+    transport:
+      name: winrm
+      elevated: true
+    driver:
+      http_proxy: null
+      https_proxy: null
+      box: mwrock/Windows2012R2
+    customize:
+      memory: 2048
     attributes:
       lsb:
         codename: windows
@@ -28,27 +42,32 @@ platforms:
 suites:
   - name: default
     run_list:
+      - recipe[sensu-test::ensure_group]
       - recipe[sensu::default]
-  - name: sysv
+      - recipe[sensu-test::good_checks]
+    attributes:
+      sensu:
+        group: nogroup
+  - name: stack
     run_list:
       - recipe[sensu-test]
     excludes:
+      - windows-2008-r2
       - windows-2012-r2
-  - name: runit
-    run_list:
-      - recipe[sensu-test::runit]
-    excludes:
-      - windows-2012-r2
+      - centos-5.11
   - name: encrypted
     run_list:
       - recipe[sensu-test]
     excludes:
+      - windows-2008-r2
       - windows-2012-r2
   - name: acls
     run_list:
       - recipe[sensu-test]
     excludes:
+      - windows-2008-r2
       - windows-2012-r2
+      - centos-5.11
     attributes:
       sensu:
         rabbitmq:
@@ -57,19 +76,43 @@ suites:
     run_list:
       - recipe[sensu-test]
     excludes:
+      - windows-2008-r2
       - windows-2012-r2
+      - centos-5.11
     attributes:
       dev_mode: true
   - name: asset
     run_list:
       - recipe[sensu-test::asset]
   - name: enterprise
+    driver:
+      customize:
+        memory: 3072
+    attributes:
+      sensu_test:
+        enterprise_repo_user: <%= ENV['SENSU_ENTERPRISE_USER'] %>
+        enterprise_repo_pass: <%= ENV['SENSU_ENTERPRISE_PASS'] %>
+      sensu:
+        enterprise:
+          heap_dump_path: /var/cache/sensu-enterprise-nondefault
     run_list:
       - recipe[sensu-test::enterprise]
     excludes:
+      - windows-2008-r2
       - windows-2012-r2
   - name: enterprise-dashboard
+    attributes:
+      sensu_test:
+        enterprise_repo_user: <%= ENV['SENSU_ENTERPRISE_USER'] %>
+        enterprise_repo_pass: <%= ENV['SENSU_ENTERPRISE_PASS'] %>
     run_list:
       - recipe[sensu-test::enterprise_dashboard]
     excludes:
+      - windows-2008-r2
+      - windows-2012-r2
+  - name: run-state-helpers
+    run_list:
+      - recipe[sensu-test::run_state_helpers]
+    excludes:
+      - windows-2008-r2
       - windows-2012-r2

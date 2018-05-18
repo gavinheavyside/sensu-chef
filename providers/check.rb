@@ -4,13 +4,31 @@ def load_current_resource
 end
 
 action :create do
+
+  if new_resource.type == 'status'
+    Chef::Log.warn("sensu_check[#{new_resource.name}]: type 'status' is deprecated and will be removed in a future version. Please use type 'standard' instead.")
+  end
+
   # Check attributes that have defaults require merging onto `select_attributes`
   # results. Currently this is only `interval`.
   check = Sensu::Helpers.select_attributes(
     new_resource,
     %w[
-      type command timeout subscribers standalone aggregate handle handlers
-      publish subdue low_flap_threshold high_flap_threshold
+      aggregate
+      aggregates
+      command
+      handle
+      handlers
+      high_flap_threshold
+      low_flap_threshold
+      publish
+      standalone
+      source
+      subdue
+      subscribers
+      timeout
+      ttl
+      type
     ]
   ).merge("interval" => new_resource.interval).merge(new_resource.additional)
 

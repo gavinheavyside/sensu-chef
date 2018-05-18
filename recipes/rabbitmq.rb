@@ -30,11 +30,18 @@ if node["sensu"]["use_ssl"]
   ssl_directory = "/etc/rabbitmq/ssl"
 
   directory ssl_directory do
+    mode '0755'
     recursive true
   end
 
-  ssl_item = node["sensu"]["data_bag"]["ssl_item"]
-  ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
+  begin
+    unless get_sensu_state(node, "ssl")
+      ssl_item = node["sensu"]["data_bag"]["ssl_item"]
+      ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
+    end
+  rescue => e
+    Chef::Log.warn("Failed to populate Sensu state with ssl credentials from data bag: " + e.inspect)
+  end
 
   %w[
     cacert
@@ -43,15 +50,17 @@ if node["sensu"]["use_ssl"]
   ].each do |item|
     path = File.join(ssl_directory, "#{item}.pem")
     file path do
-      content ssl["server"][item]
+      content lazy { get_sensu_state(node, "ssl", "server", item) }
       group "rabbitmq"
       mode 0640
-      sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+      sensitive true if respond_to?(:sensitive)
     end
     node.override["rabbitmq"]["ssl_#{item}"] = path
   end
 
-  directory File.join(ssl_directory, "client")
+  directory File.join(ssl_directory, "client") do
+    mode '0755'
+  end
 
   %w[
     cert
@@ -59,19 +68,16 @@ if node["sensu"]["use_ssl"]
   ].each do |item|
     path = File.join(ssl_directory, "client", "#{item}.pem")
     file path do
-      content ssl["client"][item]
+      content lazy { get_sensu_state(node, "ssl", "client", item) }
       group "rabbitmq"
       mode 0640
-      sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+      sensitive true if respond_to?(:sensitive)
     end
   end
 end
 
-# The packaged erlang in 12.04 (and below) is vulnerable to
-# the poodle exploit which stops rabbitmq starting its SSL listener
-if node["platform"] == "ubuntu" && node["platform_version"] <= "12.04"
-  node.override["erlang"]["install_method"] = "esl"
-end
+# Sensu recommends Erlang Solutions' erlang runtime distribution
+node.override["erlang"]["install_method"] = "esl"
 
 include_recipe "rabbitmq"
 include_recipe "rabbitmq::mgmt_console"

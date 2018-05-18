@@ -25,8 +25,11 @@ ruby_block "sensu_service_trigger" do
   action :nothing
 end
 
-if platform_family?("windows")
+case node["platform_family"]
+when "windows"
   include_recipe "sensu::_windows"
+when "aix"
+  include_recipe "sensu::_aix"
 else
   include_recipe "sensu::_linux"
 end
@@ -45,7 +48,7 @@ end
   extensions
 ].each do |dir|
   directory File.join(node["sensu"]["directory"], dir) do
-    owner node["sensu"]["admin_user"]
+    owner node["sensu"]["user"]
     group node["sensu"]["group"]
     recursive true
     mode node["sensu"]["directory_mode"]
@@ -66,24 +69,31 @@ if node["sensu"]["use_ssl"]
   data_bag_name = node["sensu"]["data_bag"]["name"]
   ssl_item = node["sensu"]["data_bag"]["ssl_item"]
 
-  ssl = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name)
+  begin
+    unless get_sensu_state(node, "ssl")
+      ssl_data = Sensu::Helpers.data_bag_item(ssl_item, false, data_bag_name).to_hash
+      set_sensu_state(node, "ssl", ssl_data)
+    end
+  rescue => e
+    Chef::Log.warn("Failed to populate Sensu state with ssl credentials from data bag: " + e.inspect)
+  end
 
   file node["sensu"]["rabbitmq"]["ssl"]["cert_chain_file"] do
-    content ssl["client"]["cert"]
+    content lazy { get_sensu_state(node, "ssl", "client", "cert") }
     owner node["sensu"]["admin_user"]
     group node["sensu"]["group"]
     mode 0640
   end
 
   file node["sensu"]["rabbitmq"]["ssl"]["private_key_file"] do
-    content ssl["client"]["key"]
+    content lazy { get_sensu_state(node, "ssl", "client", "key") }
     owner node["sensu"]["admin_user"]
     group node["sensu"]["group"]
     mode 0640
-    sensitive true if Chef::Resource::ChefGem.instance_methods(false).include?(:sensitive)
+    sensitive true if respond_to?(:sensitive)
   end
 else
-  if node["sensu"]["rabbitmq"].port == 5671
+  if node["sensu"]["rabbitmq"]["port"] == 5671
     Chef::Log.warn("Setting Sensu RabbitMQ port to 5672 as you have disabled SSL.")
     node.override["sensu"]["rabbitmq"]["port"] = 5672
   end

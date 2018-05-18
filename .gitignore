@@ -1,7 +1,5 @@
 .DS_Store
 *.lock
-examples/cookbooks
-examples/tmp
 examples/ssl/ssl.json
 examples/ssl/server
 examples/ssl/client
@@ -9,10 +7,8 @@ examples/ssl/sensu_ca
 .vagrant
 \#*
 .bundle/
-.librarian/
 .kitchen/
 .kitchen.local.yml
-tmp
-Berksfile
 test/integration/enterprise/data_bags/sensu/enterprise.json
 test/integration/enterprise-dashboard/data_bags/sensu/enterprise.json
+.envrc
